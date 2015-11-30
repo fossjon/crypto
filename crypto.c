@@ -124,7 +124,7 @@ ECC - Private Sign / Public Verify
 
 * private sign
 - hash message                 : h = SHA256(m)
-- choose secret random         : k
+- secret unique multiplier     : k
 - calculate public multipliers : r = ((k * h * d) % n)
                                : s = ((k * h) + (r * d))
 - publish                      : kP, r, s
@@ -138,28 +138,29 @@ ECC - Private Sign / Public Verify
 int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, bnum *s, int o)
 {
 	int a = 0, psiz = (e->p)->size;
-	bnum *k = NULL, *h = NULL;
+	bnum *k, *h;
 	bnum *t = bninit(psiz * 5), *u = bninit(psiz * 5), *v = bninit(psiz * 5), *w = bninit(psiz * 5);
 	ecc *hkp = ecdup(e), *rdp = ecdup(e), *hkrdp = ecdup(e), *sp = ecdup(e);
 	ect *tadd = etinit(e);
 	
-	if (((kp->x)->leng == 1) && ((kp->x)->nums[0] == 0))
-	{
-		if ((d->leng == 1) && (d->nums[0] == 0))
-		{
-			k = bnrnd(psiz); bncopy(k, d); bnfree(k); k = NULL;
-			pmul(d, e, dp);
-			
-			if (o == 1)
-			{
-				bnout("d=", d, "\n");
-				ecout(0, "dP=", dp, "\n\n");
-			}
-		}
-	}
-	
 	if (hh != NULL)
 	{
+		if (((kp->x)->leng == 1) && ((kp->x)->nums[0] == 0))
+		{
+			if ((d->leng == 1) && (d->nums[0] == 0))
+			{
+				k = bnrnd(psiz); bncopy(k, d); bnfree(k);
+				pmul(d, e, dp);
+				
+				if (o == 1)
+				{
+					bnout("d=", d, "\n");
+					ecout(0, "P=", e, "\n");
+					ecout(0, "dP=", dp, "\n\n");
+				}
+			}
+		}
+		
 		h = bndec(hh);
 		
 		if (o == 1) { bnout("h=", h, "\n\n"); }
@@ -226,29 +227,85 @@ int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, bnum *s, int o)
 ECC ElGamal - Public Encrypt / Private Decrypt
 
 * initialize
-- generate secret integer    : d
-- publish                    : P, dP
+- generate secret integer  : d
+- publish                  : P, dP
 
 * public encrypt
-- generate secret key        : t = (SHA256(pwd) || tmpkey)
-- generate secret multiplier : k = rand()
-- public key encrypt         : r = k * P        = kP
-                             : s = t + (k * dP) = t + kdP = kdP(x + t, y + t)
-- encrypt optional message   : i = rand()
-                             : e = AES256CBC(m, i, t)
-- publish                    : [ (r, s) , (i, e) ]
+- generate secret key      : t = (SHA256(pwd) || tmpkey)
+- secret unique multiplier : k = rand()
+- public key encrypt       : r = k * P        = kP
+                           : s = t + (k * dP) = t + kdP = kdP(x + t, y + t)
+- encrypt optional message : i = rand()
+                           : e = AES256CBC(m, i, t)
+- publish                  : [ (r, s) , (i, e) ]
 
 * private decrypt
-- private key decrypt        : u = s - (d * r)
-                                 = (t + kdP) - (d * kP)
-                                 = kdP(x + t, y + t) - dkP(x, y)
-                                 = kdP(x - x + t)
-                                 = t
+- private key decrypt      : u = s - (d * r)
+                               = (t + kdP) - (d * kP)
+                               = kdP(x + t, y + t) - dkP(x, y)
+                               = kdP(x - x + t)
+                               = t
 */
 
-void ecpub()
+void ecenc(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, ecc *kdp, int o)
 {
+	int psiz = (e->p)->size;
+	bnum *k, *h, *t;
+	ecc *dkp;
 	
+	if (hh != NULL)
+	{
+		if ((d->leng == 1) && (d->nums[0] == 0))
+		{
+			k = bnrnd(psiz); bncopy(k, d); bnfree(k); k = NULL;
+			pmul(d, e, dp);
+		}
+		
+		h = bndec(hh);
+		
+		if (o == 1) { bnout("h=", h, "\n\n"); }
+		
+		if (((kp->x)->leng == 1) && ((kp->x)->nums[0] == 0))
+		{
+			k = bnrnd(psiz);
+			pmul(k, e, kp);
+			
+			pmul(k, dp, kdp);
+			t = kdp->x; kdp->x = bninit(psiz + 1); bncopy(t, kdp->x); bnfree(t);
+			bnadd(kdp->x, h, kdp->x, 1);
+			
+			if (o == 1)
+			{
+				bnout("k=", k, "\n");
+				ecout(0, "kP=", kp, "\n");
+				ecout(0, "kdP=", kdp, "\n\n");
+			}
+			
+			bnfree(k);
+		}
+		
+		else
+		{
+			dkp = ecdup(e);
+			pmul(d, kp, dkp);
+			t = bninit(psiz); bnsub(kdp->x, dkp->x, t, 1);
+			
+			if (o == 1)
+			{
+				bnout("d=", d, "\n");
+				ecout(0, "P=", e, "\n");
+				ecout(0, "dP=", dp, "\n\n");
+				
+				ecout(0, "dkP=", dkp, "\n");
+				bnout("t=", t, "\n\n");
+			}
+			
+			bnfree(t);
+			ecfree(dkp);
+		}
+		
+		bnfree(h);
+	}
 }
 
 int main(int argc, char **argv)
@@ -258,7 +315,7 @@ int main(int argc, char **argv)
 	char *n, *m, *z = NULL;
 	bnum *d, *r, *s;
 	bnum *t, *u, *v, *w;
-	ecc *e, *f, *dp, *kp;
+	ecc *e, *f, *dp, *kp, *kdp;
 	
 	if (argc > 2) { z = argv[2]; }
 	
@@ -313,6 +370,20 @@ int main(int argc, char **argv)
 		
 		bnfree(d); bnfree(r); bnfree(s);
 		ecfree(dp); ecfree(kp);
+	}
+	
+	if (strcmp(argv[1], "penc") == 0)
+	{
+		d = bninit((e->p)->size);
+		dp = ecdup(e); kp = ecdup(e); kdp = ecdup(e);
+		
+		printf("Encrypt:\n\n");
+		(kp->x)->leng = 1; (kp->x)->nums[0] = 0;
+		(kp->y)->leng = 1; (kp->y)->nums[0] = 0;
+		ecenc(e, d, dp, z, kp, kdp, 1);
+		
+		printf("Decrypt:\n\n");
+		ecenc(e, d, dp, z, kp, kdp, 1);
 	}
 	
 	ecfree(e);

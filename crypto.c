@@ -23,7 +23,7 @@ bnum *bnrnd(int size)
 void eccp(ecc *e, char *xs)
 {
 	int psiz = (e->p)->size;
-	bnum *x = bninit(psiz), *y = bninit(psiz), *t = bninit(psiz);
+	bnum *x = bninit(psiz), *y = bninit(psiz), *t;
 	
 	bnum *xa = bninit(psiz * 4), *xx = bninit(psiz * 4);
 	bnum *yy = bninit(psiz * 4), *vv = bninit(psiz * 4);
@@ -43,6 +43,7 @@ void eccp(ecc *e, char *xs)
 		bndiv(vv, e->p, xx, t);
 		// todo: divide t by b?
 		
+		printf("\n");
 		bnout("x: ", x, "\n");
 		bnout("y^2: ", t, "\n");
 		
@@ -64,10 +65,10 @@ void eccp(ecc *e, char *xs)
 	if (bncmp(xx, yy) != 0)
 	{
 		bnout("y^2: ",xx," != "); bnout("y^2: ",yy,"\n");
-		exit(0);
 	}
 	
 	bnfree(xx); bnfree(yy);
+	bnfree(x); bnfree(y);
 }
 
 /*
@@ -110,6 +111,7 @@ char *ecdh(ecc *e, char *n, int o)
 	
 	bnfree(e->x); e->x = bndup(f->x);
 	bnfree(e->y); e->y = bndup(f->y);
+	bnfree(m);
 	ecfree(f);
 	
 	return r;
@@ -261,12 +263,18 @@ void ecenc(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, ecc *kdp, int o)
 			pmul(d, e, dp);
 		}
 		
-		h = bndec(hh);
+		if (o == 1)
+		{
+			ecout(0, "P=", e, "\n");
+			ecout(0, "dP=", dp, "\n\n");
+		}
 		
-		if (o == 1) { bnout("h=", h, "\n\n"); }
+		h = bndec(hh);
 		
 		if (((kp->x)->leng == 1) && ((kp->x)->nums[0] == 0))
 		{
+			if (o == 1) { bnout("h=", h, "\n\n"); }
+			
 			k = bnrnd(psiz);
 			pmul(k, e, kp);
 			
@@ -293,10 +301,7 @@ void ecenc(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, ecc *kdp, int o)
 			if (o == 1)
 			{
 				bnout("d=", d, "\n");
-				ecout(0, "P=", e, "\n");
-				ecout(0, "dP=", dp, "\n\n");
-				
-				ecout(0, "dkP=", dkp, "\n");
+				ecout(0, "dkP=", dkp, "\n\n");
 				bnout("t=", t, "\n\n");
 			}
 			
@@ -348,6 +353,7 @@ int main(int argc, char **argv)
 		ecdh(e, n, 1);
 		ecdh(f, m, 1);
 		
+		free(n); free(m);
 		ecfree(f);
 	}
 	
@@ -384,6 +390,9 @@ int main(int argc, char **argv)
 		
 		printf("Decrypt:\n\n");
 		ecenc(e, d, dp, z, kp, kdp, 1);
+		
+		bnfree(d);
+		ecfree(dp); ecfree(kp); ecfree(kdp);
 	}
 	
 	ecfree(e);

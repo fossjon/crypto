@@ -75,7 +75,7 @@ Curve25519: a=486662, b=1, p=2^255 - 19
 ECC DH : a * (b * P) == abP == baP == b * (a * P)
 */
 
-char *ecdh(ecc *e, char *n, int d)
+char *ecdh(ecc *e, char *n, int o)
 {
 	char *r = n;
 	bnum *m;
@@ -95,7 +95,7 @@ char *ecdh(ecc *e, char *n, int d)
 	f = ecdup(e);
 	pmul(m, e, f);
 	
-	if (d == 1)
+	if (o == 1)
 	{
 		char v[2050];
 		bzero(v, 2050 * sizeof(char));
@@ -135,11 +135,91 @@ ECC - Private Sign / Public Verify
 - ((h * k) + ((k * h * d) * d)) * P == ((k * h) + ((k * h * d) * d)) * P
 */
 
-char *ecsig(ecc *e, char *dd, ecc *dp)
+int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, bnum *s, int o)
 {
-	bnum *d = bndec(dd);
-	if (d == NULL) {  }
-	return NULL;
+	int a = 0, psiz = (e->p)->size;
+	bnum *k = NULL, *h = NULL;
+	bnum *t = bninit(psiz * 5), *u = bninit(psiz * 5), *v = bninit(psiz * 5), *w = bninit(psiz * 5);
+	ecc *hkp = ecdup(e), *rdp = ecdup(e), *hkrdp = ecdup(e), *sp = ecdup(e);
+	ect *tadd = etinit(e);
+	
+	if (((kp->x)->leng == 1) && ((kp->x)->nums[0] == 0))
+	{
+		if ((d->leng == 1) && (d->nums[0] == 0))
+		{
+			k = bnrnd(psiz); bncopy(k, d); bnfree(k); k = NULL;
+			pmul(d, e, dp);
+			
+			if (o == 1)
+			{
+				bnout("d=", d, "\n");
+				ecout(0, "dP=", dp, "\n\n");
+			}
+		}
+	}
+	
+	if (hh != NULL)
+	{
+		h = bndec(hh);
+		
+		if (o == 1) { bnout("h=", h, "\n\n"); }
+		
+		if (((kp->x)->leng == 1) && ((kp->x)->nums[0] == 0))
+		{
+			k = bnrnd(psiz);
+			pmul(k, e, kp);
+			
+			if (o == 1) { bnout("k=", k, "\n"); }
+			
+			bnzero(t); bnmul(k, h, t);
+			bnzero(u); bnmul(t, d, u);
+			bndiv(u, e->p, v, r);
+			
+			bnzero(v); bnmul(r, d, v);
+			bnadd(t, v, s, 1);
+			
+			bnfree(k);
+		}
+		
+		if (o == 1)
+		{
+			ecout(0, "kP=", kp, "\n");
+			bnout("r=", r, "\n");
+			bnout("s=", s, "\n\n");
+		}
+		
+		pmul(h, kp, hkp);
+		pmul(r, dp, rdp);
+		padd(hkp, rdp, hkrdp, tadd);
+		pmul(s, e, sp);
+		
+		if ((d->leng == 1) && (d->nums[0] == 0))
+		{
+			if (o == 1)
+			{
+				//ecout(0, "hkP=", hkp, "\n");
+				//ecout(0, "rdP=", rdp, "\n");
+				ecout(0, "hkrdP=", hkrdp, "\n==\n");
+				ecout(0, "sP=", sp, "\n\n");
+			}
+		}
+		
+		if (bncmp(hkrdp->x, sp->x) == 0)
+		{
+			if (bncmp(hkrdp->y, sp->y) == 0)
+			{
+				a = 1;
+			}
+		}
+		
+		bnfree(h);
+	}
+	
+	bnfree(t); bnfree(u); bnfree(v); bnfree(w);
+	ecfree(hkp); ecfree(rdp); ecfree(hkrdp); ecfree(sp);
+	etfree(tadd);
+	
+	return a;
 }
 
 /*
@@ -175,9 +255,12 @@ int main(int argc, char **argv)
 {
 	char *a = "486662", *b = "1", *p = "57896044618658097711785492504343953926634992332820282019728792003956564819949";
 	char *x = "9", *y = "43114425171068552920764898935933967039370386198203806730763910166200978582548";
-	char *n, *m;
+	char *n, *m, *z = NULL;
+	bnum *d, *r, *s;
 	bnum *t, *u, *v, *w;
-	ecc *e, *f;
+	ecc *e, *f, *dp, *kp;
+	
+	if (argc > 2) { z = argv[2]; }
 	
 	t = bndec(p);
 	u = bninit(t->size); w = bndec(x); bncopy(w, u); bnfree(w);
@@ -186,8 +269,7 @@ int main(int argc, char **argv)
 	
 	if (strcmp(argv[1], "pgen") == 0)
 	{
-		if (argc > 2) { eccp(e, argv[2]); }
-		else { eccp(e, NULL); }
+		eccp(e, z);
 	}
 	
 	if (strcmp(argv[1], "pmul") == 0)
@@ -214,7 +296,23 @@ int main(int argc, char **argv)
 	
 	if (strcmp(argv[1], "psig") == 0)
 	{
+		d = bninit((e->p)->size);
+		dp = ecdup(e); kp = ecdup(e);
+		r = bninit((e->p)->size * 5);
+		s = bninit((e->p)->size * 5);
 		
+		printf("Sign:\n\n");
+		(kp->x)->leng = 1; (kp->x)->nums[0] = 0;
+		(kp->y)->leng = 1; (kp->y)->nums[0] = 0;
+		ecsig(e, d, dp, z, kp, r, s, 1);
+		
+		printf("Verify:\n\n");
+		bnzero(d);
+		if (ecsig(e, d, dp, z, kp, r, s, 1) != 0) { printf("[GOOD]\n"); }
+		else { printf("\n[FAILED]\n"); }
+		
+		bnfree(d); bnfree(r); bnfree(s);
+		ecfree(dp); ecfree(kp);
 	}
 	
 	ecfree(e);

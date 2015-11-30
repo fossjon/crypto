@@ -82,7 +82,7 @@ void sha256final()
 	int i = (b / 32), j = (24 - (b % 32));
 	w[i] = (w[i] | (0x80 << j));
 	w[14] = l[1]; w[15] = l[0];
-	sha2core();w[i] = (w[i] | (s[x] << j));
+	sha2core();
 }
 
 int main(int argc, char **argv)

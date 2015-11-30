@@ -53,7 +53,7 @@ void eccp(ecc *e, char *xs)
 		x = bnrnd(psiz);
 	}
 	
-	bnout("y: ", y, "\n");
+	bnout("y: ", y, "\n\n");
 	// note: another y point == p - y
 	
 	bnzero(yy); bncopy(t, yy);

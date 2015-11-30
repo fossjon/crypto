@@ -1,5 +1,3 @@
-#include <stdio.h>
-#include <string.h>
 int b = 0;
 unsigned int a[8], h[8], l[2];
 unsigned int hh[8] = {
@@ -32,8 +30,8 @@ void sha256init()
 
 void sha2core()
 {
-	int y;
-	for (y = 0; y < 16; ++y) { printf("%08x ", w[y]); } printf("\n");
+	int y, z;
+	//for (y = 0; y < 16; ++y) { printf("%08x ", w[y]); } printf("\n");
 	unsigned int s0, s1, t1, t2, ch, ma;
 	for (y = 16; y < 64; ++y)
 	{
@@ -50,12 +48,12 @@ void sha2core()
 		s0 = (rr(h[0],2) ^ rr(h[0],13) ^ rr(h[0],22));
 		ma = ((h[0] & h[1]) ^ (h[0] & h[2]) ^ (h[1] & h[2]));
 		t2 = add(s0, ma);
-	}
-	for (y = 7; y >= 0; --y)
-	{
-		if (y == 4) { h[y] = add(h[y-1], t1); }
-		else if (y == 0) { h[y] = add(t1, t2); }
-		else { h[y] = h[y-1]; }
+		for (z = 7; z >= 0; --z)
+		{
+			if (z == 4) { h[z] = add(h[z-1], t1); }
+			else if (z == 0) { h[z] = add(t1, t2); }
+			else { h[z] = h[z-1]; }
+		}
 	}
 	for (y = 0; y < 8; ++y) { h[y] = add(h[y], a[y]); }
 	b = 0;
@@ -86,13 +84,15 @@ void sha256final()
 	sha2core();
 }
 
+#include <stdio.h>
+#include <string.h>
 int main(int argc, char **argv)
 {
 	int x;
 	sha256init();
 	sha256update(argv[1], strlen(argv[1]));
 	sha256final();
-	for (x = 0; x < 8; ++x) { printf("%08x ", h[x]); }
+	for (x = 0; x < 8; ++x) { printf("%08x", h[x]); }
 	printf("\n");
 	return 0;
 }

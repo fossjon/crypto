@@ -83,16 +83,3 @@ void sha256final()
 	w[14] = l[1]; w[15] = l[0];
 	sha2core();
 }
-
-#include <stdio.h>
-#include <string.h>
-int main(int argc, char **argv)
-{
-	int x;
-	sha256init();
-	sha256update(argv[1], strlen(argv[1]));
-	sha256final();
-	for (x = 0; x < 8; ++x) { printf("%08x", h[x]); }
-	printf("\n");
-	return 0;
-}

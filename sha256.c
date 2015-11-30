@@ -18,8 +18,9 @@ unsigned int kk[64] = {
 	0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
 
-unsigned int rr(unsigned int a, int b) { return ((a << (32 - b)) | (a >> b)); }
-unsigned int rs(unsigned int a, int b) { return (a >> b); }
+unsigned int rr(unsigned int a, int b) { return (((a << (32 - b)) | (a >> b)) & 0xffffffff); }
+unsigned int rs(unsigned int a, int b) { return ((a >> b) & 0xffffffff); }
+unsigned int add(unsigned int a, unsigned int b) { return ((a + b) & 0xffffffff); }
 
 void sha256init()
 {
@@ -32,31 +33,31 @@ void sha256init()
 void sha2core()
 {
 	int y;
-	for (y = 0; y < 16; ++y) { printf("%08x", w[y]); } printf("\n");
+	for (y = 0; y < 16; ++y) { printf("%08x ", w[y]); } printf("\n");
 	unsigned int s0, s1, t1, t2, ch, ma;
 	for (y = 16; y < 64; ++y)
 	{
 		s0 = (rr(w[y-15],7) ^ rr(w[y-15],18) ^ rs(w[y-15],3));
 		s1 = (rr(w[y-2],17) ^ rr(w[y-2],19) ^ rs(w[y-2],10));
-		w[y] = (w[y-16] + s0 + w[y-7] + s1);
+		w[y] = add(add(w[y-16], s0), add(w[y-7], s1));
 	}
 	for (y = 0; y < 8; ++y) { a[y] = h[y]; }
 	for (y = 0; y < 64; ++y)
 	{
 		s1 = (rr(h[4],6) ^ rr(h[4],11) ^ rr(h[4],25));
-		ch = ((h[4] & h[5]) ^ ((~h[4]) & h[6]));
-		t1 = (h[7] + s1 + ch + k[y] + w[y]);
+		ch = ((h[4] & h[5]) ^ ((~(h[4])) & h[6]));
+		t1 = add(add(add(h[7], s1), add(ch, k[y])), w[y]);
 		s0 = (rr(h[0],2) ^ rr(h[0],13) ^ rr(h[0],22));
 		ma = ((h[0] & h[1]) ^ (h[0] & h[2]) ^ (h[1] & h[2]));
-		t2 = (s0 + ma);
+		t2 = add(s0, ma);
 	}
 	for (y = 7; y >= 0; --y)
 	{
-		if (y == 4) { h[y] = (h[y-1] + t1); }
-		else if (y == 0) { h[y] = (t1 + t2); }
+		if (y == 4) { h[y] = add(h[y-1], t1); }
+		else if (y == 0) { h[y] = add(t1, t2); }
 		else { h[y] = h[y-1]; }
 	}
-	for (y = 0; y < 8; ++y) { h[y] = (h[y] + a[y]); }
+	for (y = 0; y < 8; ++y) { h[y] = add(h[y], a[y]); }
 	b = 0;
 	for (y = 0; y < 16; ++y) { w[y] = 0; }
 }
@@ -91,7 +92,7 @@ int main(int argc, char **argv)
 	sha256init();
 	sha256update(argv[1], strlen(argv[1]));
 	sha256final();
-	for (x = 0; x < 8; ++x) { printf("%08x", h[x]); }
+	for (x = 0; x < 8; ++x) { printf("%08x ", h[x]); }
 	printf("\n");
 	return 0;
 }

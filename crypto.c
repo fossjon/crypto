@@ -127,22 +127,23 @@ ECC - Private Sign / Public Verify
 * private sign
 - hash message                 : h = SHA256(m)
 - secret unique multiplier     : k
-- calculate public multipliers : r = ((k * h * d) % n)
-                               : s = ((k * h) + (r * d))
-- publish                      : kP, r, s
+- calculate public multipliers : (x, y) = kP(x, y)
+                               : r = (((k * h) + (x * d)) % n)
+                               : s = (h + k + d)
+                               : while (r < s) do r = (r + s)
+                               : k = (k + (r - s))
+- publish                      : kP, r
 
 * public verify
-- hkP + rdP                         == sP
-- ((h * k) + (r * d)) * P           == ((k * h) + (r * d)) * P
-- ((h * k) + ((k * h * d) * d)) * P == ((k * h) + ((k * h * d) * d)) * P
+- hP + kP + dP == rP
 */
 
-int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, bnum *s, int o)
+int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, int o)
 {
 	int a = 0, psiz = (e->p)->size;
 	bnum *k, *h;
 	bnum *t = bninit(psiz * 5), *u = bninit(psiz * 5), *v = bninit(psiz * 5), *w = bninit(psiz * 5);
-	ecc *hkp = ecdup(e), *rdp = ecdup(e), *hkrdp = ecdup(e), *sp = ecdup(e);
+	ecc *hp = ecdup(e), *hkp = ecdup(e), *hkdp = ecdup(e), *rp = ecdup(e);
 	ect *tadd = etinit(e);
 	
 	if (hh != NULL)
@@ -175,11 +176,16 @@ int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, bnum *s, int o)
 			if (o == 1) { bnout("k=", k, "\n"); }
 			
 			bnzero(t); bnmul(k, h, t);
-			bnzero(u); bnmul(t, d, u);
-			bndiv(u, e->p, v, r);
+			bnzero(u); bnmul(kp->x, d, u);
+			bnadd(t, u, v, 1);
+			bndiv(v, e->p, w, r);
 			
-			bnzero(v); bnmul(r, d, v);
-			bnadd(t, v, s, 1);
+			bnadd(h, k, t, 1); bnadd(t, d, u, 1);
+			while (bncmp(r, u) < 0) { bnadd(r, u, r, 1); }
+			
+			bnsub(r, u, v, 1);
+			bnadd(k, v, k, 1);
+			pmul(k, e, kp);
 			
 			bnfree(k);
 		}
@@ -187,29 +193,28 @@ int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, bnum *s, int o)
 		if (o == 1)
 		{
 			ecout(0, "kP=", kp, "\n");
-			bnout("r=", r, "\n");
-			bnout("s=", s, "\n\n");
+			bnout("r=", r, "\n\n");
 		}
 		
-		pmul(h, kp, hkp);
-		pmul(r, dp, rdp);
-		padd(hkp, rdp, hkrdp, tadd);
-		pmul(s, e, sp);
+		pmul(h, e, hp);
+		padd(hp, kp, hkp, tadd);
+		padd(hkp, dp, hkdp, tadd);
+		pmul(r, e, rp);
 		
 		if ((d->leng == 1) && (d->nums[0] == 0))
 		{
 			if (o == 1)
 			{
+				//ecout(0, "hP=", hp, "\n");
 				//ecout(0, "hkP=", hkp, "\n");
-				//ecout(0, "rdP=", rdp, "\n");
-				ecout(0, "hkrdP=", hkrdp, "\n==\n");
-				ecout(0, "sP=", sp, "\n\n");
+				ecout(0, "(h+k+d)P=", hkdp, "\n==\n");
+				ecout(0, "rP=", rp, "\n\n");
 			}
 		}
 		
-		if (bncmp(hkrdp->x, sp->x) == 0)
+		if (bncmp(hkdp->x, rp->x) == 0)
 		{
-			if (bncmp(hkrdp->y, sp->y) == 0)
+			if (bncmp(hkdp->y, rp->y) == 0)
 			{
 				a = 1;
 			}
@@ -219,7 +224,7 @@ int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, bnum *s, int o)
 	}
 	
 	bnfree(t); bnfree(u); bnfree(v); bnfree(w);
-	ecfree(hkp); ecfree(rdp); ecfree(hkrdp); ecfree(sp);
+	ecfree(hp); ecfree(hkp); ecfree(hkdp); ecfree(rp);
 	etfree(tadd);
 	
 	return a;
@@ -367,11 +372,11 @@ int main(int argc, char **argv)
 		printf("Sign:\n\n");
 		(kp->x)->leng = 1; (kp->x)->nums[0] = 0;
 		(kp->y)->leng = 1; (kp->y)->nums[0] = 0;
-		ecsig(e, d, dp, z, kp, r, s, 1);
+		ecsig(e, d, dp, z, kp, r, 1);
 		
 		printf("Verify:\n\n");
 		bnzero(d);
-		if (ecsig(e, d, dp, z, kp, r, s, 1) != 0) { printf("[GOOD]\n"); }
+		if (ecsig(e, d, dp, z, kp, r, 1) != 0) { printf("[GOOD]\n"); }
 		else { printf("\n[FAILED]\n"); }
 		
 		bnfree(d); bnfree(r); bnfree(s);

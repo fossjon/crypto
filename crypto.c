@@ -3,6 +3,8 @@
 #include <string.h>
 #include <strings.h>
 
+#include "sha256.c"
+#include "aes256.c"
 #include "ec.c"
 
 bnum *bnrnd(int size)
@@ -323,6 +325,8 @@ int main(int argc, char **argv)
 	char *a = "486662", *b = "1", *p = "57896044618658097711785492504343953926634992332820282019728792003956564819949";
 	char *x = "9", *y = "43114425171068552920764898935933967039370386198203806730763910166200978582548";
 	char *n, *m, *z = NULL;
+	char hash[64];
+	unsigned char msg[16], key[256];
 	bnum *d, *r, *s;
 	bnum *t, *u, *v, *w;
 	ecc *e, *f, *dp, *kp, *kdp;
@@ -398,6 +402,30 @@ int main(int argc, char **argv)
 		
 		bnfree(d);
 		ecfree(dp); ecfree(kp); ecfree(kdp);
+	}
+	
+	if (strcmp(argv[1], "hash") == 0)
+	{
+		sha256 hobj;
+		sha256init(&hobj);
+		sha256update(&hobj, argv[2], strlen(argv[2]));
+		sha256final(&hobj, hash);
+		printf("%s\n", hash);
+	}
+	
+	if (strcmp(argv[1], "menc") == 0)
+	{
+		bzero(key, 256);
+		strcpy((char *)key, argv[3]);
+		aes256keys(key);
+		
+		bzero(key, 16);
+		strcpy((char *)msg, argv[2]);
+		aes256core(msg, key, 0);
+		
+		int i;
+		for (i = 0; i < 16; ++i) { printf("%02x", msg[i]); }
+		printf("\n");
 	}
 	
 	ecfree(e);

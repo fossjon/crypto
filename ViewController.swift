@@ -7,11 +7,16 @@ import UIKit
 
 class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
 
+	let userText: UITextField = UITextField(frame: CGRect(x: 10.00, y: 32.00, width: 200.00, height: 30.00))
+	let passText: UITextField = UITextField(frame: CGRect(x: 10.00, y: 64.00, width: 200.00, height: 30.00))
+	let authButn: UIButton = UIButton(frame: CGRect(x: 225.00, y: 64.00, width: 100.00, height: 30.00))
+	
+	var msgList: [String] = ["line 1", "line 2", "line 3"]
+	
 	//let msgUser: UILabel = UILabel(frame: CGRect(x: 10.00, y: 32.00, width: 200.00, height: 64.00))
-	var msgList: [String] = ["We", "Heart", "Swift"]
-	let msgView: UITableView = UITableView(frame: CGRect(x: 10.00, y: 32.00, width: 150.00, height: 128.00))
-	let msgText: UITextView = UITextView(frame: CGRect(x: 10.00, y: 256.00, width: 150.00, height: 64.00))
-	let msgButn: UIButton = UIButton(frame: CGRect(x: 200.00, y: 256.00, width: 150.00, height: 64.00))
+	//let msgView: UITableView = UITableView(frame: CGRect(x: 10.00, y: 32.00, width: 150.00, height: 128.00))
+	//let msgText: UITextView = UITextView(frame: CGRect(x: 10.00, y: 256.00, width: 150.00, height: 64.00))
+	//let msgButn: UIButton = UIButton(frame: CGRect(x: 200.00, y: 256.00, width: 150.00, height: 64.00))
 	
 	let serv = "http://smsg.site88.net"
 	var authkey: String = ""
@@ -67,21 +72,48 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		super.viewDidLoad()
 		// Do any additional setup after loading the view, typically from a nib.
 		
+		let userPadd = UIView(frame: CGRectMake(0, 0, 5, self.userText.frame.size.height))
+		self.userText.leftView = userPadd
+		self.userText.leftViewMode = UITextFieldViewMode.Always
+		self.userText.layer.cornerRadius = 2.0
+		self.userText.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.userText.layer.borderWidth = 2.0
+		self.userText.autocorrectionType = UITextAutocorrectionType.No
+		self.userText.autocapitalizationType = UITextAutocapitalizationType.None
+		self.view.addSubview(self.userText)
+		
+		let passPadd = UIView(frame: CGRectMake(0, 0, 5, self.passText.frame.size.height))
+		self.passText.leftView = passPadd
+		self.passText.leftViewMode = UITextFieldViewMode.Always
+		self.passText.layer.cornerRadius = 2.0
+		self.passText.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.passText.layer.borderWidth = 2.0
+		self.passText.secureTextEntry = true
+		self.view.addSubview(self.passText)
+		
+		self.authButn.layer.cornerRadius = 2.0
+		self.authButn.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.authButn.layer.borderWidth = 2.0
+		self.authButn.setTitle("Login", forState: UIControlState.Normal)
+		self.authButn.setTitleColor(UIColor.blackColor(), forState: UIControlState.Normal)
+		self.authButn.addTarget(self, action: "sendMsg:", forControlEvents: UIControlEvents.TouchUpInside)
+		self.view.addSubview(self.authButn)
+		
 		/*self.msgUser.text = "message string"
 		self.view.addSubview(self.msgUser)*/
 		
-		self.msgView.delegate = self
+		/*self.msgView.delegate = self
 		self.msgView.dataSource = self
-		self.view.addSubview(self.msgView)
+		self.view.addSubview(self.msgView)*/
 		
-		self.msgText.backgroundColor = UIColor.blueColor()
+		/*self.msgText.backgroundColor = UIColor.blueColor()
 		self.msgText.text = "input string"
-		self.view.addSubview(self.msgText)
+		self.view.addSubview(self.msgText)*/
 		
-		self.msgButn.backgroundColor = UIColor.blueColor()
+		/*self.msgButn.backgroundColor = UIColor.blueColor()
 		self.msgButn.setTitle("Send", forState: UIControlState.Normal)
 		self.msgButn.addTarget(self, action: "sendMsg:", forControlEvents: UIControlEvents.TouchUpInside)
-		self.view.addSubview(self.msgButn)
+		self.view.addSubview(self.msgButn)*/
 	}
 
 	override func didReceiveMemoryWarning() {

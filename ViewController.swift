@@ -20,6 +20,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 	let mesgText: UITextView = UITextView(frame: CGRect(x: 10.00, y: 284.00, width: 200.00, height: 60.00))
 	let mesgButn: UIButton = UIButton(frame: CGRect(x: 225.00, y: 284.00, width: 100.00, height: 30.00))
 	
+	let vers = "1.5"
 	let serv = "http://smsg.site88.net"
 	var authkey: String = ""
 	var dhkey: String = ""
@@ -52,6 +53,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 								let dhx = String.fromCString(bnstr(getx(self.ecobj)))
 								let dhy = String.fromCString(bnstr(gety(self.ecobj)))
 								self.seckText.text = (" z>"+dhx!+","+dhy!)
+								self.seckText.setNeedsDisplay()
 							}
 						}
 					}
@@ -72,6 +74,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 			if (self.dhkey == "") { self.dhkey = String.fromCString(ecdh(self.ecobj, nil))! }
 			let dhx = String.fromCString(bnstr(getx(self.ecobj)))
 			let dhy = String.fromCString(bnstr(gety(self.ecobj)))
+			self.seckText.text = (" x>"+dhx!+","+dhy!)
+			self.seckText.setNeedsDisplay()
 			postdata = ("mode=mesg&user="+self.userText.text!+"&auth="+self.authkey+"&rcpt="+self.frndText.text!+"&mesg=key,"+dhx!+","+dhy!)
 			print("k>"+self.dhkey)
 		}
@@ -161,7 +165,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.seckText.layer.cornerRadius = 2.0
 		self.seckText.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.seckText.layer.borderWidth = 2.0
-		self.seckText.text = " v1.2"
+		self.seckText.text = (" v" + self.vers)
 		self.view.addSubview(self.seckText)
 		
 		self.frndButn.layer.cornerRadius = 2.0
@@ -197,7 +201,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.view.addSubview(self.mesgButn)
 		
 		
-		NSTimer.scheduledTimerWithTimeInterval(1.0, target: self, selector: "backFunc:", userInfo: nil, repeats: true)
+		NSTimer.scheduledTimerWithTimeInterval(5.0, target: self, selector: "backFunc:", userInfo: nil, repeats: true)
 	}
 
 	override func didReceiveMemoryWarning() {

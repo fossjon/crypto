@@ -20,11 +20,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 	let mesgText: UITextView = UITextView(frame: CGRect(x: 10.00, y: 284.00, width: 200.00, height: 60.00))
 	let mesgButn: UIButton = UIButton(frame: CGRect(x: 225.00, y: 284.00, width: 100.00, height: 30.00))
 	
-	let vers = "1.5"
+	let vers = "1.7"
 	let serv = "http://smsg.site88.net"
 	var authkey: String = ""
 	var dhkey: String = ""
-	let ecobj = eccryp()
+	var ecobj = eccryp()
 	
 	func readReply(mode: Int, response: String) {
 		if (response != "") { print("r>"+response) }
@@ -48,6 +48,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 						{
 							if (infolist[0] == "key")
 							{
+								if (self.dhkey == "") { self.sendMesg(1, mesg: "") }
 								setexy(self.ecobj, infolist[1], infolist[2])
 								ecdh(self.ecobj, self.dhkey)
 								let dhx = String.fromCString(bnstr(getx(self.ecobj)))

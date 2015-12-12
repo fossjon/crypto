@@ -75,7 +75,7 @@ void eccp(ecc *e, char *xs)
 
 /*
 Curve25519: a=486662, b=1, p=2^255 - 19
-ECC DH : a * (b * P) == abP == baP == b * (a * P)
+ECC DH: o * (n * P) == onP == noP == n * (o * P)
 */
 
 char *ecdh(ecc *e, char *n, int o)

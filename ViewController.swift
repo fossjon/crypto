@@ -23,30 +23,65 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 	let serv = "http://smsg.site88.net"
 	var authkey: String = ""
 	var dhkey: String = ""
+	let ecobj = eccryp()
 	
-	func readReply(response: String) {
-		if (self.authkey == "")
+	func readReply(mode: Int, response: String) {
+		if (response != "") { print("r>"+response) }
+		
+		if (response.characters.count > 5)
 		{
-			self.authkey = response.substringWithRange(Range<String.Index>(start:response.startIndex.advancedBy(5), end:response.endIndex))
-			print(self.authkey)
+			if (mode == 0)
+			{
+				self.authkey = response.substringWithRange(Range<String.Index>(start:response.startIndex.advancedBy(5), end:response.endIndex))
+			}
+			else if (mode == 3)
+			{
+				let linelist = response.characters.split{$0 == "\n"}.map(String.init)
+				for line in linelist
+				{
+					let readlist = line.characters.split{$0 == ":"}.map(String.init)
+					if (readlist.count > 2)
+					{
+						let infolist = readlist[2].characters.split{$0 == ","}.map(String.init)
+						if (infolist.count > 2)
+						{
+							if (infolist[0] == "key")
+							{
+								setexy(self.ecobj, infolist[1], infolist[2])
+								ecdh(self.ecobj, self.dhkey)
+								let dhx = String.fromCString(bnstr(getx(self.ecobj)))
+								let dhy = String.fromCString(bnstr(gety(self.ecobj)))
+								self.seckText.text = (" z>"+dhx!+","+dhy!)
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	
-	func sendMsg(butn: UIButton) {
+	func sendMesg(mode: Int, mesg: String) {
 		var postdata: String = ""
 		
-		if (self.authkey == "")
+		if (mode == 0)
 		{
 			postdata = ("mode=auth&user="+self.userText.text!+"&pass="+self.passText.text!)
 		}
-		else
+		else if (mode == 1)
 		{
-			let ecobj = eccryp()
-			self.dhkey = String.fromCString(ecdh(ecobj, nil, 0))!
-			let dhx = String.fromCString(bnstr(getx(ecobj)))
-			let dhy = String.fromCString(bnstr(gety(ecobj)))
-			postdata = ("mode=mesg&user="+self.userText.text!+"&auth="+self.authkey+"&rcpt="+self.frndText.text!+"&mesg="+dhx!+","+dhy!)
-			print(self.dhkey)
+			if (self.dhkey == "") { self.dhkey = String.fromCString(ecdh(self.ecobj, nil))! }
+			let dhx = String.fromCString(bnstr(getx(self.ecobj)))
+			let dhy = String.fromCString(bnstr(gety(self.ecobj)))
+			postdata = ("mode=mesg&user="+self.userText.text!+"&auth="+self.authkey+"&rcpt="+self.frndText.text!+"&mesg=key,"+dhx!+","+dhy!)
+			print("k>"+self.dhkey)
+		}
+		else if (mode == 2)
+		{
+			postdata = ("mode=mesg&user="+self.userText.text!+"&auth="+self.authkey+"&rcpt="+self.frndText.text!+"&mesg=msg,"+mesg)
+		}
+		else if (mode == 3)
+		{
+			postdata = ("mode=read&user="+self.userText.text!+"&auth="+self.authkey)
 		}
 		
 		let request = NSMutableURLRequest(URL: NSURL(string: self.serv)!)
@@ -55,9 +90,15 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		let task = NSURLSession.sharedSession().dataTaskWithRequest(request) {
 			data, response, error in
 			let reply = NSString(data: data!, encoding: NSUTF8StringEncoding)
-			self.readReply(reply as! String)
+			self.readReply(mode, response: reply as! String)
 		}
 		task.resume()
+	}
+	
+	func butnPress(butn: UIButton) {
+		if (butn.titleLabel?.text == "Login") { self.sendMesg(0, mesg: "") }
+		if (butn.titleLabel?.text == "Add") { self.sendMesg(1, mesg: "") }
+		if (butn.titleLabel?.text == "Send") { self.sendMesg(2, mesg: self.mesgText.text) }
 	}
 	
 	func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -70,6 +111,10 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		return cell
 	}
 	
+	func backFunc(timer: NSTimer) {
+		self.sendMesg(3, mesg: "")
+	}
+	
 	override func viewDidLoad() {
 		super.viewDidLoad()
 		// Do any additional setup after loading the view, typically from a nib.
@@ -79,7 +124,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.userText.leftView = userPadd
 		self.userText.leftViewMode = UITextFieldViewMode.Always
 		self.userText.layer.cornerRadius = 2.0
-		self.userText.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.userText.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.userText.layer.borderWidth = 2.0
 		self.userText.autocorrectionType = UITextAutocorrectionType.No
 		self.userText.autocapitalizationType = UITextAutocapitalizationType.None
@@ -89,17 +134,17 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.passText.leftView = passPadd
 		self.passText.leftViewMode = UITextFieldViewMode.Always
 		self.passText.layer.cornerRadius = 2.0
-		self.passText.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.passText.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.passText.layer.borderWidth = 2.0
 		self.passText.secureTextEntry = true
 		self.view.addSubview(self.passText)
 		
 		self.authButn.layer.cornerRadius = 2.0
-		self.authButn.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.authButn.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.authButn.layer.borderWidth = 2.0
 		self.authButn.setTitle("Login", forState: UIControlState.Normal)
 		self.authButn.setTitleColor(UIColor.blackColor(), forState: UIControlState.Normal)
-		self.authButn.addTarget(self, action: "sendMsg:", forControlEvents: UIControlEvents.TouchUpInside)
+		self.authButn.addTarget(self, action: "butnPress:", forControlEvents: UIControlEvents.TouchUpInside)
 		self.view.addSubview(self.authButn)
 		
 		
@@ -107,36 +152,36 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.frndText.leftView = frndPadd
 		self.frndText.leftViewMode = UITextFieldViewMode.Always
 		self.frndText.layer.cornerRadius = 2.0
-		self.frndText.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.frndText.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.frndText.layer.borderWidth = 2.0
 		self.frndText.autocorrectionType = UITextAutocorrectionType.No
 		self.frndText.autocapitalizationType = UITextAutocapitalizationType.None
 		self.view.addSubview(self.frndText)
 		
 		self.seckText.layer.cornerRadius = 2.0
-		self.seckText.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.seckText.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.seckText.layer.borderWidth = 2.0
-		self.seckText.text = " waiting for key"
+		self.seckText.text = " v1.2"
 		self.view.addSubview(self.seckText)
 		
 		self.frndButn.layer.cornerRadius = 2.0
-		self.frndButn.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.frndButn.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.frndButn.layer.borderWidth = 2.0
-		self.frndButn.setTitle("Key", forState: UIControlState.Normal)
+		self.frndButn.setTitle("Add", forState: UIControlState.Normal)
 		self.frndButn.setTitleColor(UIColor.blackColor(), forState: UIControlState.Normal)
-		self.frndButn.addTarget(self, action: "sendMsg:", forControlEvents: UIControlEvents.TouchUpInside)
+		self.frndButn.addTarget(self, action: "butnPress:", forControlEvents: UIControlEvents.TouchUpInside)
 		self.view.addSubview(self.frndButn)
 		
 		
 		self.mesgHist.layer.cornerRadius = 2.0
-		self.mesgHist.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.mesgHist.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.mesgHist.layer.borderWidth = 2.0
 		self.mesgHist.delegate = self
 		self.mesgHist.dataSource = self
 		self.view.addSubview(self.mesgHist)
 		
 		self.mesgText.layer.cornerRadius = 2.0
-		self.mesgText.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.mesgText.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.mesgText.layer.borderWidth = 2.0
 		self.mesgText.autocorrectionType = UITextAutocorrectionType.No
 		self.mesgText.autocapitalizationType = UITextAutocapitalizationType.None
@@ -144,12 +189,15 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.view.addSubview(self.mesgText)
 		
 		self.mesgButn.layer.cornerRadius = 2.0
-		self.mesgButn.layer.borderColor = UIColor(red:0/255, green:0/255, blue:0/255, alpha:1.0).CGColor
+		self.mesgButn.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.mesgButn.layer.borderWidth = 2.0
 		self.mesgButn.setTitle("Send", forState: UIControlState.Normal)
 		self.mesgButn.setTitleColor(UIColor.blackColor(), forState: UIControlState.Normal)
-		self.mesgButn.addTarget(self, action: "sendMsg:", forControlEvents: UIControlEvents.TouchUpInside)
+		self.mesgButn.addTarget(self, action: "butnPress:", forControlEvents: UIControlEvents.TouchUpInside)
 		self.view.addSubview(self.mesgButn)
+		
+		
+		NSTimer.scheduledTimerWithTimeInterval(1.0, target: self, selector: "backFunc:", userInfo: nil, repeats: true)
 	}
 
 	override func didReceiveMemoryWarning() {
@@ -158,4 +206,3 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 	}
 
 }
-

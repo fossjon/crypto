@@ -38,9 +38,9 @@ bnum *bnrnd(int size)
  ECC DH: o * (n * P) == onP == noP == n * (o * P)
  */
 
-char *ecdh(ecc *e, char *n, int o)
+char *ecdh(ecc *e, const char *n)
 {
-	char *r = n;
+	char *r = (char *)n;
 	bnum *m;
 	ecc *f;
 	
@@ -52,7 +52,7 @@ char *ecdh(ecc *e, char *n, int o)
 	
 	else
 	{
-		m = bndec(n);
+		m = bndec((char *)n);
 	}
 	
 	f = ecdup(e);
@@ -64,4 +64,13 @@ char *ecdh(ecc *e, char *n, int o)
 	ecfree(f);
 	
 	return r;
+}
+
+void setexy(ecc *e, const char *x, const char *y)
+{
+	bnum *t;
+	t = bndec((char *)x); t->leng = min(t->leng, (e->p)->size);
+	bncopy(t, e->x); bnfree(t);
+	t = bndec((char *)y); t->leng = min(t->leng, (e->p)->size);
+	bncopy(t, e->y); bnfree(t);
 }

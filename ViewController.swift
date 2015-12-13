@@ -20,10 +20,13 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 	let mesgText: UITextView = UITextView(frame: CGRect(x: 10.00, y: 284.00, width: 200.00, height: 60.00))
 	let mesgButn: UIButton = UIButton(frame: CGRect(x: 225.00, y: 284.00, width: 100.00, height: 30.00))
 	
-	let vers = "1.7"
+	let vers = "1.9.7"
 	let serv = "http://smsg.site88.net"
 	var authkey: String = ""
 	var dhkey: String = ""
+	var dhx: String = ""
+	var dhy: String = ""
+	var skey: String = ""
 	var ecobj = eccryp()
 	
 	func readReply(mode: Int, response: String) {
@@ -34,7 +37,10 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 			if (mode == 0)
 			{
 				self.authkey = response.substringWithRange(Range<String.Index>(start:response.startIndex.advancedBy(5), end:response.endIndex))
+				
+				dispatch_async(dispatch_get_main_queue()) { self.seckText.text = (" " + self.authkey) }
 			}
+			
 			else if (mode == 3)
 			{
 				let linelist = response.characters.split{$0 == "\n"}.map(String.init)
@@ -46,15 +52,28 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 						let infolist = readlist[2].characters.split{$0 == ","}.map(String.init)
 						if (infolist.count > 2)
 						{
-							if (infolist[0] == "key")
+							if ((readlist[1] == frndText.text) && (infolist[0] == "key"))
 							{
-								if (self.dhkey == "") { self.sendMesg(1, mesg: "") }
+								if (self.dhkey == "")
+								{
+									self.dhkey = String.fromCString(ecdh(self.ecobj, nil))!
+									self.dhx = String.fromCString(bnstr(getx(self.ecobj)))!
+									self.dhy = String.fromCString(bnstr(gety(self.ecobj)))!
+									self.sendMesg(1, mesg: self.dhx+","+self.dhy)
+								}
+								
 								setexy(self.ecobj, infolist[1], infolist[2])
 								ecdh(self.ecobj, self.dhkey)
-								let dhx = String.fromCString(bnstr(getx(self.ecobj)))
-								let dhy = String.fromCString(bnstr(gety(self.ecobj)))
-								self.seckText.text = (" z>"+dhx!+","+dhy!)
-								self.seckText.setNeedsDisplay()
+								let tdhx = String.fromCString(bnstr(getx(self.ecobj)))
+								let tdhy = String.fromCString(bnstr(gety(self.ecobj)))
+								self.skey = String.fromCString(shash(tdhx!+","+tdhy!))!
+								
+								dispatch_async(dispatch_get_main_queue()) { self.seckText.text = (" " + self.skey) }
+							}
+							
+							else if ((readlist[1] == frndText.text) && (infolist[0] == "msg"))
+							{
+								
 							}
 						}
 					}
@@ -70,20 +89,17 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		{
 			postdata = ("mode=auth&user="+self.userText.text!+"&pass="+self.passText.text!)
 		}
+		
 		else if (mode == 1)
 		{
-			if (self.dhkey == "") { self.dhkey = String.fromCString(ecdh(self.ecobj, nil))! }
-			let dhx = String.fromCString(bnstr(getx(self.ecobj)))
-			let dhy = String.fromCString(bnstr(gety(self.ecobj)))
-			self.seckText.text = (" x>"+dhx!+","+dhy!)
-			self.seckText.setNeedsDisplay()
-			postdata = ("mode=mesg&user="+self.userText.text!+"&auth="+self.authkey+"&rcpt="+self.frndText.text!+"&mesg=key,"+dhx!+","+dhy!)
-			print("k>"+self.dhkey)
+			postdata = ("mode=mesg&user="+self.userText.text!+"&auth="+self.authkey+"&rcpt="+self.frndText.text!+"&mesg=key,"+mesg)
 		}
+		
 		else if (mode == 2)
 		{
 			postdata = ("mode=mesg&user="+self.userText.text!+"&auth="+self.authkey+"&rcpt="+self.frndText.text!+"&mesg=msg,"+mesg)
 		}
+		
 		else if (mode == 3)
 		{
 			postdata = ("mode=read&user="+self.userText.text!+"&auth="+self.authkey)
@@ -102,8 +118,25 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 	
 	func butnPress(butn: UIButton) {
 		if (butn.titleLabel?.text == "Login") { self.sendMesg(0, mesg: "") }
-		if (butn.titleLabel?.text == "Add") { self.sendMesg(1, mesg: "") }
-		if (butn.titleLabel?.text == "Send") { self.sendMesg(2, mesg: self.mesgText.text) }
+		if (butn.titleLabel?.text == "Add")
+		{
+			if (self.dhkey == "")
+			{
+				self.dhkey = String.fromCString(ecdh(self.ecobj, nil))!
+				self.dhx = String.fromCString(bnstr(getx(self.ecobj)))!
+				self.dhy = String.fromCString(bnstr(gety(self.ecobj)))!
+			}
+			self.sendMesg(1, mesg: self.dhx+","+self.dhy)
+		}
+		if (butn.titleLabel?.text == "Send")
+		{
+			if (self.skey != "")
+			{
+				let stime = String(NSDate.timeIntervalSinceReferenceDate())
+				let smesg = String.fromCString(sencr(stime, self.mesgText.text, self.skey))
+				self.sendMesg(2, mesg: stime+","+smesg!)
+			}
+		}
 	}
 	
 	func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -124,6 +157,9 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		super.viewDidLoad()
 		// Do any additional setup after loading the view, typically from a nib.
 		
+		print("draw init")
+		
+		/* login elements */
 		
 		let userPadd = UIView(frame: CGRectMake(0, 0, 5, self.userText.frame.size.height))
 		self.userText.leftView = userPadd
@@ -152,6 +188,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.authButn.addTarget(self, action: "butnPress:", forControlEvents: UIControlEvents.TouchUpInside)
 		self.view.addSubview(self.authButn)
 		
+		/* friend elements */
 		
 		let frndPadd = UIView(frame: CGRectMake(0, 0, 5, self.userText.frame.size.height))
 		self.frndText.leftView = frndPadd
@@ -177,6 +214,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.frndButn.addTarget(self, action: "butnPress:", forControlEvents: UIControlEvents.TouchUpInside)
 		self.view.addSubview(self.frndButn)
 		
+		/* message elements */
 		
 		self.mesgHist.layer.cornerRadius = 2.0
 		self.mesgHist.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
@@ -201,6 +239,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.mesgButn.addTarget(self, action: "butnPress:", forControlEvents: UIControlEvents.TouchUpInside)
 		self.view.addSubview(self.mesgButn)
 		
+		/* background reader */
 		
 		NSTimer.scheduledTimerWithTimeInterval(5.0, target: self, selector: "backFunc:", userInfo: nil, repeats: true)
 	}

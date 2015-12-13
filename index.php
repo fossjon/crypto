@@ -48,7 +48,7 @@
 	$nums = ("0123456789");
 	$hexs = ($nums."abcdef");
 	$alls = ($hexs."ghijklmnopqrstuvwxyz"."ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	$exts = (":,");
+	$exts = (".,:");
 	
 	if ($_POST["mode"] == "join")
 	{

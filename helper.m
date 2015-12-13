@@ -58,8 +58,8 @@ char *ecdh(ecc *e, const char *n)
 	f = ecdup(e);
 	pmul(m, e, f);
 	
-	bnfree(e->x); e->x = bndup(f->x);
-	bnfree(e->y); e->y = bndup(f->y);
+	(f->x)->leng = min((f->x)->leng, (e->p)->size); bncopy(f->x, e->x);
+	(f->y)->leng = min((f->y)->leng, (e->p)->size); bncopy(f->y, e->y);
 	bnfree(m);
 	ecfree(f);
 	
@@ -73,4 +73,60 @@ void setexy(ecc *e, const char *x, const char *y)
 	bncopy(t, e->x); bnfree(t);
 	t = bndec((char *)y); t->leng = min(t->leng, (e->p)->size);
 	bncopy(t, e->y); bnfree(t);
+}
+
+char *shash(const char *m)
+{
+	char *o = malloc(256);
+	sha256 hobj;
+	sha256init(&hobj);
+	sha256update(&hobj, (char *)m, (unsigned int)strlen(m));
+	sha256final(&hobj, o);
+	return o;
+}
+
+char *sencr(const char *i, const char *m, const char *k)
+{
+	int x, y, z = 0;
+	unsigned long ilen = strlen(i), mlen = strlen(m), klen = strlen(k);
+	unsigned char ivn[16], msg[16], key[256];
+	char *hex = "0123456789abcdef";
+	char *enc = malloc(3 * strlen(m));
+	
+	bzero(key, 256);
+	for (x = 0; ((x + 1) < 32) && ((x + 1) < klen); x += 2)
+	{
+		for (y = 0; y < 16; ++y)
+		{
+			if (k[x] == hex[y]) { key[x / 2] |= (y << 4); }
+			if (k[x + 1] == hex[y]) { key[x / 2] |= y; }
+		}
+	}
+	aes256keys(key);
+	
+	for (x = 0; x < 16; ++x)
+	{
+		ivn[x] = 0;
+		if (x < ilen) { ivn[x] = i[x]; }
+	}
+	
+	for (x = 0; x < mlen; x += 16)
+	{
+		for (y = 0; y < 16; ++y)
+		{
+			msg[y] = 0;
+			if ((x + y) < mlen) { msg[y] = m[x + y]; }
+			msg[y] ^= ivn[y];
+		}
+		aes256core(msg, key, 0);
+		for (y = 0; y < 16; ++y)
+		{
+			enc[z] = hex[(msg[y] >> 4) & 0xf]; ++z;
+			enc[z] = hex[msg[y] & 0xf]; ++z;
+			ivn[y] = msg[y];
+		}
+	}
+	enc[z] = 0;
+	
+	return enc;
 }

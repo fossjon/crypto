@@ -419,7 +419,7 @@ int main(int argc, char **argv)
 		strcpy((char *)key, argv[3]);
 		aes256keys(key);
 		
-		bzero(key, 16);
+		bzero(msg, 16);
 		strcpy((char *)msg, argv[2]);
 		aes256core(msg, key, 0);
 		

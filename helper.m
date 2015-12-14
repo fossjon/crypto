@@ -94,7 +94,7 @@ char *sencr(const char *i, const char *m, const char *k, int d)
 	char *enc = malloc(3 * strlen(m));
 	
 	bzero(key, 256);
-	for (x = 0; ((x + 1) < 32) && ((x + 1) < klen); x += 2)
+	for (x = 0; ((x + 1) < 64) && ((x + 1) < klen); x += 2)
 	{
 		for (y = 0; y < 16; ++y)
 		{
@@ -163,4 +163,51 @@ char *sencr(const char *i, const char *m, const char *k, int d)
 	enc[z] = 0;
 	
 	return enc;
+}
+
+char *hmac(const char *m, const char *k)
+{
+	int x, y, i, j, bs = 64;
+	unsigned long mlen = strlen(m), klen = strlen(k);
+	char *hex = "0123456789abcdef", *hmout = malloc(256);
+	unsigned char key[bs], ipad[bs], opad[bs];
+	sha256 hobj;
+	
+	bzero(key, bs);
+	for (x = 0; ((x + 1) < 64) && ((x + 1) < klen); x += 2)
+	{
+		for (y = 0; y < 16; ++y)
+		{
+			if (k[x] == hex[y]) { key[x / 2] |= (y << 4); }
+			if (k[x + 1] == hex[y]) { key[x / 2] |= y; }
+		}
+	}
+	
+	for (x = 0; x < bs; ++x)
+	{
+		ipad[x] = (0x36 ^ key[x]);
+		opad[x] = (0x5C ^ key[x]);
+	}
+	
+	sha256init(&hobj);
+	sha256update(&hobj, (char *)ipad, (unsigned int)bs);
+	sha256update(&hobj, (char *)m, (unsigned int)mlen);
+	sha256final(&hobj, hmout);
+	
+	for (x = 0; x < 8; ++x)
+	{
+		for (y = 0; y < 4; ++y)
+		{
+			i = ((x * 4) + y);
+			j = (24 - (y * 8));
+			key[i] = ((hobj.h[x] >> j) & 0xff);
+		}
+	}
+	
+	sha256init(&hobj);
+	sha256update(&hobj, (char *)opad, (unsigned int)bs);
+	sha256update(&hobj, (char *)key, 32);
+	sha256final(&hobj, hmout);
+	
+	return hmout;
 }

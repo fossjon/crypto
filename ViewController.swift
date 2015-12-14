@@ -20,13 +20,14 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 	let mesgText: UITextView = UITextView(frame: CGRect(x: 10.00, y: 284.00, width: 200.00, height: 60.00))
 	let mesgButn: UIButton = UIButton(frame: CGRect(x: 225.00, y: 284.00, width: 100.00, height: 30.00))
 	
-	let vers = "1.9.93"
+	let vers = "1.9.9.1"
 	let serv = "http://smsg.site88.net"
 	var authkey: String = ""
 	var dhkey: String = ""
 	var dhx: String = ""
 	var dhy: String = ""
 	var skey: String = ""
+	var tkey: String = ""
 	var ecobj = eccryp()
 	
 	func readReply(mode: Int, response: String) {
@@ -67,8 +68,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 								ecdh(self.ecobj, self.dhkey)
 								let tdhx = String.fromCString(bnstr(getx(self.ecobj)))
 								let tdhy = String.fromCString(bnstr(gety(self.ecobj)))
-								self.skey = String.fromCString(shash(tdhx!+","+tdhy!))!
 								
+								print("d>"+tdhx!+","+tdhy!)
+								self.skey = String.fromCString(shash(tdhx!+","+tdhy!))!
+								self.tkey = String.fromCString(shash(self.skey))!
+								print("k>"+self.skey+","+self.tkey)
 								dispatch_async(dispatch_get_main_queue()) { self.seckText.text = (" " + self.skey) }
 							}
 						}
@@ -77,8 +81,14 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 						{
 							if ((readlist[1] == frndText.text) && (infolist[0] == "msg"))
 							{
-								let smesg = String.fromCString(sencr(infolist[1], infolist[2], self.skey, 1))
-								print("!!!>"+smesg!)
+								let smac = String.fromCString(hmac(infolist[1]+","+infolist[2], self.tkey))
+								print("v>"+smac!+"=="+infolist[3])
+								if (smac == infolist[3])
+								{
+									let smesg = String.fromCString(sencr(infolist[1], infolist[2], self.skey, 1))
+									self.mesgList.append(smesg!)
+									dispatch_async(dispatch_get_main_queue()) { self.mesgHist.reloadData() }
+								}
 							}
 						}
 					}
@@ -139,7 +149,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 			{
 				let stime = String(NSDate.timeIntervalSinceReferenceDate())
 				let smesg = String.fromCString(sencr(stime, self.mesgText.text, self.skey, 0))
-				self.sendMesg(2, mesg: stime+","+smesg!+",...")
+				let smac = String.fromCString(hmac(stime+","+smesg!, self.tkey))
+				self.sendMesg(2, mesg: stime+","+smesg!+","+smac!)
 			}
 		}
 	}
@@ -151,6 +162,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 	func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
 		let cell = UITableViewCell(style: UITableViewCellStyle.Default, reuseIdentifier: "cell")
 		cell.textLabel!.text = self.mesgList[indexPath.row]
+		cell.textLabel!.font = cell.textLabel!.font.fontWithSize(10)
 		return cell
 	}
 	
@@ -162,7 +174,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		super.viewDidLoad()
 		// Do any additional setup after loading the view, typically from a nib.
 		
-		print("draw init")
+		print("i>draw init")
 		
 		/* login elements */
 		
@@ -216,6 +228,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.seckText.layer.cornerRadius = 2.0
 		self.seckText.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.seckText.layer.borderWidth = 2.0
+		self.seckText.font = self.seckText.font.fontWithSize(8)
 		self.seckText.text = (" v" + self.vers)
 		self.view.addSubview(self.seckText)
 		
@@ -224,6 +237,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.mesgHist.layer.cornerRadius = 2.0
 		self.mesgHist.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.mesgHist.layer.borderWidth = 2.0
+		self.mesgHist.rowHeight = 20.0
 		self.mesgHist.delegate = self
 		self.mesgHist.dataSource = self
 		self.view.addSubview(self.mesgHist)

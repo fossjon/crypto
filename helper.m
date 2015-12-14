@@ -85,11 +85,11 @@ char *shash(const char *m)
 	return o;
 }
 
-char *sencr(const char *i, const char *m, const char *k)
+char *sencr(const char *i, const char *m, const char *k, int d)
 {
-	int x, y, z = 0;
+	int x, y, w, z = 0;
 	unsigned long ilen = strlen(i), mlen = strlen(m), klen = strlen(k);
-	unsigned char ivn[16], msg[16], key[256];
+	unsigned char tmp[16], ivn[16], msg[16], key[256];
 	char *hex = "0123456789abcdef";
 	char *enc = malloc(3 * strlen(m));
 	
@@ -110,20 +110,54 @@ char *sencr(const char *i, const char *m, const char *k)
 		if (x < ilen) { ivn[x] = i[x]; }
 	}
 	
-	for (x = 0; x < mlen; x += 16)
+	x = 0;
+	while (x < mlen)
 	{
-		for (y = 0; y < 16; ++y)
+		if (d == 0)
 		{
-			msg[y] = 0;
-			if ((x + y) < mlen) { msg[y] = m[x + y]; }
-			msg[y] ^= ivn[y];
+			for (y = 0; y < 16; ++y)
+			{
+				msg[y] = 0;
+				if (x < mlen) { msg[y] = m[x]; ++x; }
+				msg[y] ^= ivn[y];
+			}
 		}
-		aes256core(msg, key, 0);
-		for (y = 0; y < 16; ++y)
+		else
 		{
-			enc[z] = hex[(msg[y] >> 4) & 0xf]; ++z;
-			enc[z] = hex[msg[y] & 0xf]; ++z;
-			ivn[y] = msg[y];
+			for (y = 0; y < 16; ++y)
+			{
+				msg[y] = 0;
+				if ((x + 1) < mlen)
+				{
+					for (w = 0; w < 16; ++w)
+					{
+						if (m[x] == hex[w]) { msg[y] |= (w << 4); }
+						if (m[x + 1] == hex[w]) { msg[y] |= w; }
+					}
+					x += 2;
+				}
+				tmp[y] = msg[y];
+			}
+		}
+		
+		aes256core(msg, key, d);
+		
+		if (d == 0)
+		{
+			for (y = 0; y < 16; ++y)
+			{
+				enc[z] = hex[(msg[y] >> 4) & 0xf]; ++z;
+				enc[z] = hex[msg[y] & 0xf]; ++z;
+				ivn[y] = msg[y];
+			}
+		}
+		else
+		{
+			for (y = 0; y < 16; ++y)
+			{
+				enc[z] = (msg[y] ^ ivn[y]); ++z;
+				ivn[y] = tmp[y];
+			}
 		}
 	}
 	enc[z] = 0;

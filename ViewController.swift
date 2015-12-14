@@ -12,15 +12,15 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 	let authButn: UIButton = UIButton(frame: CGRect(x: 225.00, y: 64.00, width: 100.00, height: 30.00))
 	
 	let frndText: UITextField = UITextField(frame: CGRect(x: 10.00, y: 96.00, width: 200.00, height: 30.00))
-	let seckText: UILabel = UILabel(frame: CGRect(x: 10.00, y: 128.00, width: 200.00, height: 30.00))
-	let frndButn: UIButton = UIButton(frame: CGRect(x: 225.00, y: 128.00, width: 100.00, height: 30.00))
+	let frndButn: UIButton = UIButton(frame: CGRect(x: 225.00, y: 96.00, width: 100.00, height: 30.00))
+	let seckText: UILabel = UILabel(frame: CGRect(x: 10.00, y: 128.00, width: 300.00, height: 30.00))
 	
 	var mesgList: [String] = ["line 1", "line 2", "line 3"]
 	let mesgHist: UITableView = UITableView(frame: CGRect(x: 10.00, y: 160.00, width: 300.00, height: 120.00))
 	let mesgText: UITextView = UITextView(frame: CGRect(x: 10.00, y: 284.00, width: 200.00, height: 60.00))
 	let mesgButn: UIButton = UIButton(frame: CGRect(x: 225.00, y: 284.00, width: 100.00, height: 30.00))
 	
-	let vers = "1.9.7"
+	let vers = "1.9.93"
 	let serv = "http://smsg.site88.net"
 	var authkey: String = ""
 	var dhkey: String = ""
@@ -50,7 +50,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 					if (readlist.count > 2)
 					{
 						let infolist = readlist[2].characters.split{$0 == ","}.map(String.init)
-						if (infolist.count > 2)
+						
+						if (infolist.count == 3)
 						{
 							if ((readlist[1] == frndText.text) && (infolist[0] == "key"))
 							{
@@ -70,10 +71,14 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 								
 								dispatch_async(dispatch_get_main_queue()) { self.seckText.text = (" " + self.skey) }
 							}
-							
-							else if ((readlist[1] == frndText.text) && (infolist[0] == "msg"))
+						}
+						
+						else if (infolist.count == 4)
+						{
+							if ((readlist[1] == frndText.text) && (infolist[0] == "msg"))
 							{
-								
+								let smesg = String.fromCString(sencr(infolist[1], infolist[2], self.skey, 1))
+								print("!!!>"+smesg!)
 							}
 						}
 					}
@@ -133,8 +138,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 			if (self.skey != "")
 			{
 				let stime = String(NSDate.timeIntervalSinceReferenceDate())
-				let smesg = String.fromCString(sencr(stime, self.mesgText.text, self.skey))
-				self.sendMesg(2, mesg: stime+","+smesg!)
+				let smesg = String.fromCString(sencr(stime, self.mesgText.text, self.skey, 0))
+				self.sendMesg(2, mesg: stime+","+smesg!+",...")
 			}
 		}
 	}
@@ -200,12 +205,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.frndText.autocapitalizationType = UITextAutocapitalizationType.None
 		self.view.addSubview(self.frndText)
 		
-		self.seckText.layer.cornerRadius = 2.0
-		self.seckText.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
-		self.seckText.layer.borderWidth = 2.0
-		self.seckText.text = (" v" + self.vers)
-		self.view.addSubview(self.seckText)
-		
 		self.frndButn.layer.cornerRadius = 2.0
 		self.frndButn.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
 		self.frndButn.layer.borderWidth = 2.0
@@ -213,6 +212,12 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 		self.frndButn.setTitleColor(UIColor.blackColor(), forState: UIControlState.Normal)
 		self.frndButn.addTarget(self, action: "butnPress:", forControlEvents: UIControlEvents.TouchUpInside)
 		self.view.addSubview(self.frndButn)
+		
+		self.seckText.layer.cornerRadius = 2.0
+		self.seckText.layer.borderColor = UIColor(red: 0/255, green: 0/255, blue: 0/255, alpha: 1.0).CGColor
+		self.seckText.layer.borderWidth = 2.0
+		self.seckText.text = (" v" + self.vers)
+		self.view.addSubview(self.seckText)
 		
 		/* message elements */
 		

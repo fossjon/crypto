@@ -64,7 +64,7 @@ void sha2core(sha256 *sctx)
 	for (y = 0; y < 16; ++y) { sctx->w[y] = 0; }
 }
 
-void sha256update(sha256 *sctx, char *s, unsigned int m)
+void sha256update(sha256 *sctx, unsigned char *s, unsigned int m)
 {
 	unsigned int x = 0;
 	for (x = 0; x < m; ++x)

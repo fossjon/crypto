@@ -80,7 +80,7 @@ char *shash(const char *m)
 	char *o = malloc(256);
 	sha256 hobj;
 	sha256init(&hobj);
-	sha256update(&hobj, (char *)m, (unsigned int)strlen(m));
+	sha256update(&hobj, (unsigned char *)m, (unsigned int)strlen(m));
 	sha256final(&hobj, o);
 	return o;
 }
@@ -190,8 +190,8 @@ char *hmac(const char *m, const char *k)
 	}
 	
 	sha256init(&hobj);
-	sha256update(&hobj, (char *)ipad, (unsigned int)bs);
-	sha256update(&hobj, (char *)m, (unsigned int)mlen);
+	sha256update(&hobj, ipad, bs);
+	sha256update(&hobj, (unsigned char *)m, (unsigned int)mlen);
 	sha256final(&hobj, hmout);
 	
 	for (x = 0; x < 8; ++x)
@@ -205,8 +205,8 @@ char *hmac(const char *m, const char *k)
 	}
 	
 	sha256init(&hobj);
-	sha256update(&hobj, (char *)opad, (unsigned int)bs);
-	sha256update(&hobj, (char *)key, 32);
+	sha256update(&hobj, opad, bs);
+	sha256update(&hobj, key, 32);
 	sha256final(&hobj, hmout);
 	
 	return hmout;

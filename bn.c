@@ -234,8 +234,9 @@ bnum *bndup(bnum *a)
 
 bnum *bndec(char *decstr)
 {
-	int x, y, r, n, m;
-	int i = 0, l = strlen(decstr);
+	int x, y, r, n;
+	int i = 0;
+	unsigned long m, l = strlen(decstr);
 	char numstr[l + 1], outstr[l + 1];
 	// result = 0
 	bnum *result = bninit(1);

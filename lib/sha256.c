@@ -35,7 +35,6 @@ void sha256init(sha256 *sctx)
 void sha2core(sha256 *sctx)
 {
 	int y, z;
-	//for (y = 0; y < 16; ++y) { printf("%08x ", w[y]); } printf("\n");
 	unsigned int s0, s1, t1, t2, ch, ma;
 	for (y = 16; y < 64; ++y)
 	{

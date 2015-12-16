@@ -3,9 +3,9 @@
 #include <string.h>
 #include <strings.h>
 
-#include "sha256.c"
-#include "aes256.c"
-#include "ec.c"
+#include "../lib/sha256.c"
+#include "../lib/aes256.c"
+#include "../lib/ec.c"
 
 bnum *bnrnd(int size)
 {
@@ -129,23 +129,22 @@ ECC - Private Sign / Public Verify
 * private sign
 - hash message                 : h = SHA256(m)
 - secret unique multiplier     : k
-- calculate public multipliers : (x, y) = kP(x, y)
-                               : r = (((k * h) + (x * d)) % n)
-                               : s = (h + k + d)
-                               : while (r < s) do r = (r + s)
-                               : k = (k + (r - s))
+- calculate public multipliers : kP
+                               : e = hP(x)
+                               : r = ((e * k) + (h * d))
 - publish                      : kP, r
 
 * public verify
-- hP + kP + dP == rP
+                               : e = hP(x)
+-                              : (e * kP) + (h * dP) == rP
 */
 
 int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, int o)
 {
 	int a = 0, psiz = (e->p)->size;
 	bnum *k, *h;
-	bnum *t = bninit(psiz * 5), *u = bninit(psiz * 5), *v = bninit(psiz * 5), *w = bninit(psiz * 5);
-	ecc *hp = ecdup(e), *hkp = ecdup(e), *hkdp = ecdup(e), *rp = ecdup(e);
+	bnum *t = bninit(psiz * 5), *u = bninit(psiz * 5);
+	ecc *hp = ecdup(e), *ekp = ecdup(e), *hdp = ecdup(e), *ekhdp = ecdup(e), *rp = ecdup(e);
 	ect *tadd = etinit(e);
 	
 	if (hh != NULL)
@@ -157,16 +156,18 @@ int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, int o)
 				k = bnrnd(psiz); bncopy(k, d); bnfree(k);
 				pmul(d, e, dp);
 				
-				if (o == 1)
-				{
-					bnout("d=", d, "\n");
-					ecout(0, "P=", e, "\n");
-					ecout(0, "dP=", dp, "\n\n");
-				}
+				if (o == 1) { bnout("d=", d, "\n"); }
 			}
 		}
 		
+		if (o == 1)
+		{
+			ecout(0, "P=", e, "\n");
+			ecout(0, "dP=", dp, "\n\n");
+		}
+		
 		h = bndec(hh);
+		pmul(h, e, hp);
 		
 		if (o == 1) { bnout("h=", h, "\n\n"); }
 		
@@ -177,17 +178,9 @@ int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, int o)
 			
 			if (o == 1) { bnout("k=", k, "\n"); }
 			
-			bnzero(t); bnmul(k, h, t);
-			bnzero(u); bnmul(kp->x, d, u);
-			bnadd(t, u, v, 1);
-			bndiv(v, e->p, w, r);
-			
-			bnadd(h, k, t, 1); bnadd(t, d, u, 1);
-			while (bncmp(r, u) < 0) { bnadd(r, u, r, 1); }
-			
-			bnsub(r, u, v, 1);
-			bnadd(k, v, k, 1);
-			pmul(k, e, kp);
+			bnzero(t); bnmul(hp->x, k, t);
+			bnzero(u); bnmul(h, d, u);
+			bnadd(t, u, r, 1);
 			
 			bnfree(k);
 		}
@@ -198,25 +191,23 @@ int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, int o)
 			bnout("r=", r, "\n\n");
 		}
 		
-		pmul(h, e, hp);
-		padd(hp, kp, hkp, tadd);
-		padd(hkp, dp, hkdp, tadd);
+		pmul(hp->x, kp, ekp);
+		pmul(h, dp, hdp);
+		padd(ekp, hdp, ekhdp, tadd);
 		pmul(r, e, rp);
 		
 		if ((d->leng == 1) && (d->nums[0] == 0))
 		{
 			if (o == 1)
 			{
-				//ecout(0, "hP=", hp, "\n");
-				//ecout(0, "hkP=", hkp, "\n");
-				ecout(0, "(h+k+d)P=", hkdp, "\n==\n");
+				ecout(0, "(ek+hd)P=", ekhdp, "\n==\n");
 				ecout(0, "rP=", rp, "\n\n");
 			}
 		}
 		
-		if (bncmp(hkdp->x, rp->x) == 0)
+		if (bncmp(ekhdp->x, rp->x) == 0)
 		{
-			if (bncmp(hkdp->y, rp->y) == 0)
+			if (bncmp(ekhdp->y, rp->y) == 0)
 			{
 				a = 1;
 			}
@@ -225,8 +216,8 @@ int ecsig(ecc *e, bnum *d, ecc *dp, char *hh, ecc *kp, bnum *r, int o)
 		bnfree(h);
 	}
 	
-	bnfree(t); bnfree(u); bnfree(v); bnfree(w);
-	ecfree(hp); ecfree(hkp); ecfree(hkdp); ecfree(rp);
+	bnfree(t); bnfree(u);
+	ecfree(hp); ecfree(ekp); ecfree(hdp); ecfree(ekhdp); ecfree(rp);
 	etfree(tadd);
 	
 	return a;
@@ -408,7 +399,7 @@ int main(int argc, char **argv)
 	{
 		sha256 hobj;
 		sha256init(&hobj);
-		sha256update(&hobj, argv[2], strlen(argv[2]));
+		sha256update(&hobj, (unsigned char *)argv[2], strlen(argv[2]));
 		sha256final(&hobj, hash);
 		printf("%s\n", hash);
 	}
